@@ -16,17 +16,9 @@ import {
   retrieveAdmissionByIDFn
 } from "./services/patients.js";
 import {logger} from "./services/logger.js";
-
-// --- CONFIGURAZIONE METRICHE (Prometheus) ---
-client.collectDefaultMetrics(); // Raccoglie CPU, Memoria, Event Loop automaticamente
-
-// Definiamo una metrica personalizzata: Istogramma dei tempi di risposta HTTP
-const httpRequestDurationMicroseconds = new client.Histogram({
-  name: 'http_request_duration_seconds',
-  help: 'Duration of HTTP requests in seconds',
-  labelNames: ['method', 'route', 'code'],
-  buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 10] // Fasce di tempo (0.1s, 0.3s...)
-});
+import {AppError} from "./utils/errorHandler.js";
+import {globalErrorHandler} from "./utils/errorHandler.js";
+import {getContentType, getMetrics, httpRequestDurationMicroseconds} from "./services/metrics.js";
 
 // --- CONFIGURAZIONE SERVER EXPRESS ---
 const app = express();
@@ -36,31 +28,23 @@ const port = 3000;
 app.use(cors());
 app.use(express.json());
 
-// --- 3. MIDDLEWARE PER TRACCIARE LE METRICHE ---
-// Questo middleware intercetta TUTTE le chiamate e registra quanto tempo impiegano
+// Middleware Metriche (Tempi di risposta)
 app.use(responseTime((req, res, time) => {
-  if (req.path === '/metrics') return; // Ignoriamo la chiamata alle metriche stesse
+  if (req.path === '/metrics') return; // Non tracciamo le chiamate a /metrics
 
   httpRequestDurationMicroseconds.labels(
       req.method,
-      req.path, // In produzione meglio raggruppare gli ID (es. Usare una regex per sostituire numeri con :id)
+      req.path,
       res.statusCode
-  ).observe(time / 1000); // response-time restituisce ms, Prometheus vuole secondi
-
-  // Loggiamo anche l'evento
-  logger.info(`Request handled`, {
-    method: req.method,
-    url: req.path,
-    status: res.statusCode,
-    duration_ms: time
-  });
+  ).observe(time / 1000);
 }));
 
-// --- ENDPOINT PER LE METRICHE ---
-// Prometheus chiamerà questo indirizzo ogni 5-15 secondi
+// --- ENDPOINTS ---
+
+// Metriche per Prometheus
 app.get('/metrics', async (req, res) => {
-  res.set('Content-Type', client.register.contentType);
-  res.send(await client.register.metrics());
+  res.set('Content-Type', getContentType());
+  res.send(await getMetrics());
 });
 
 // --- HEALTH CHECK ---
@@ -80,6 +64,14 @@ app.get('/admissions', authenticateTokenFn, retrieveActiveAdmissionsFn);
 app.get('/admissions/:id', authenticateTokenFn, retrieveAdmissionByIDFn);
 app.post('/admissions', authenticateTokenFn, insertNewAdmissionFn);
 app.patch('/admissions/:id/status', authenticateTokenFn, changeAdmissionsStatusByIDFn);
+
+// --- ROTTA NON TROVATA ---
+app.all('*', (req, res, next) => {
+  next(new AppError(`Impossibile trovare ${req.originalUrl} su questo server`, 404));
+});
+
+// --- GLOBAL ERROR HANDLER ---
+app.use(globalErrorHandler);
 
 // Avvio Server
 app.listen(port, () => {
