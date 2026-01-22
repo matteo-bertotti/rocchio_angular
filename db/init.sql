@@ -1,33 +1,47 @@
 CREATE SCHEMA IF NOT EXISTS sio;
 SET search_path TO sio;
 
-CREATE EXTENSION pgcrypto;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- 2. Creazione Tipi Enumerati
--- user_role: Rimane invariato
+-- 1. Creazione Tipi Enumerati
 DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
         CREATE TYPE user_role AS ENUM ('DOC', 'INF', 'AMM');
     END IF;
 END$$;
 
--- admission_status: MANTENUTO 'RIC' come richiesto
 DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'admission_status') THEN
         CREATE TYPE admission_status AS ENUM ('ATT', 'VIS', 'OBI', 'RIC', 'DIM');
     END IF;
 END$$;
 
--- 3. Tabella Colori Triage (Configurazione Dinamica)
+-- 2. Tabelle di Lookup (Dizionari)
+
+-- A. Colori Triage
 CREATE TABLE IF NOT EXISTS triage_colors (
-    code VARCHAR(20) PRIMARY KEY, -- Es. 'ROSSO', 'GIALLO'
+    code VARCHAR(20) PRIMARY KEY,
     display_name VARCHAR(50) NOT NULL,
-    priority INTEGER NOT NULL, -- 1 = Massima urgenza
-    hex_value VARCHAR(7) NOT NULL, -- Es. '#FF0000'
+    priority INTEGER NOT NULL,
+    hex_value VARCHAR(7) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 4. Tabella Utenti
+-- B. Patologie (Nuova)
+CREATE TABLE IF NOT EXISTS pathologies (
+    code VARCHAR(10) PRIMARY KEY, -- es. 'C01'
+    description VARCHAR(100) NOT NULL, -- es. 'Traumatica'
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- C. Modalità Arrivo (Nuova)
+CREATE TABLE IF NOT EXISTS arrival_modes (
+    code VARCHAR(10) PRIMARY KEY, -- es. 'AMB'
+    description VARCHAR(50) NOT NULL, -- es. 'Ambulanza 118'
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 3. Utenti e Pazienti
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
@@ -36,7 +50,6 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 5. Tabella Pazienti
 CREATE TABLE IF NOT EXISTS patients (
     id SERIAL PRIMARY KEY,
     codice_fiscale VARCHAR(16) UNIQUE NOT NULL,
@@ -49,63 +62,69 @@ CREATE TABLE IF NOT EXISTS patients (
     provincia VARCHAR(5),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE INDEX IF NOT EXISTS idx_patients_cf ON patients(codice_fiscale);
 
--- 6. Tabella Accessi (Admissions)
+-- 4. Tabella Accessi (Admissions)
 CREATE TABLE IF NOT EXISTS admissions (
     id SERIAL PRIMARY KEY,
     patient_id INTEGER REFERENCES patients(id) ON DELETE RESTRICT,
     braccialetto VARCHAR(20) UNIQUE NOT NULL,
     data_ora_ingresso TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     stato admission_status NOT NULL DEFAULT 'ATT',
-    patologia_codice VARCHAR(10),
 
-    -- Nuova Foreign Key verso la tabella colori
+    -- Foreign Keys aggiornate
+    patologia_code VARCHAR(10) REFERENCES pathologies(code) ON DELETE RESTRICT,
     codice_colore VARCHAR(20) REFERENCES triage_colors(code) ON DELETE SET NULL,
+    modalita_arrivo_code VARCHAR(10) REFERENCES arrival_modes(code) ON DELETE RESTRICT,
 
-    modalita_arrivo VARCHAR(50),
     note_triage TEXT,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE INDEX IF NOT EXISTS idx_admissions_braccialetto ON admissions(braccialetto);
--- --- POPOLAMENTO DATI (SEEDING) ---
--- A. Popolamento Colori Triage (Default Standard)
--- Usiamo ON CONFLICT per non rompere il riavvio se i dati esistono
+
+-- --- SEEDING ---
+
+-- Colori
 INSERT INTO triage_colors (code, display_name, priority, hex_value) VALUES
     ('ROSSO', 'Emergenza', 1, '#FF4E4A'),
     ('ARANCIONE', 'Urgenza Indifferibile', 2, '#FFB053'),
     ('AZZURRO', 'Urgenza Differibile', 3, '#61AFEF'),
     ('VERDE', 'Urgenza Minore', 4, '#A5ED72'),
     ('BIANCO', 'Non Urgente', 5, '#DCDFE4')
-ON CONFLICT (code) DO UPDATE
-    SET hex_value = EXCLUDED.hex_value, priority = EXCLUDED.priority;
+ON CONFLICT (code) DO UPDATE SET hex_value = EXCLUDED.hex_value;
 
--- A. Utenti (Password: "1234")
+-- Patologie (Esempi base)
+INSERT INTO pathologies (code, description) VALUES
+    ('C01', 'Traumatica'),
+    ('C02', 'Cardiocircolatoria'),
+    ('C03', 'Respiratoria'),
+    ('C04', 'Neurologica'),
+    ('C05', 'Psichiatrica'),
+    ('C19', 'Altra Patologia')
+ON CONFLICT (code) DO NOTHING;
+
+-- Modalità Arrivo
+INSERT INTO arrival_modes (code, description) VALUES
+    ('AUT', 'Autonomo'),
+    ('AMB', 'Ambulanza 118'),
+    ('ELI', 'Elisoccorso'),
+    ('INT', 'Interno Ospedale')
+ON CONFLICT (code) DO NOTHING;
+
+-- Utenti
 INSERT INTO users (username, password, role) VALUES
     ('medico', crypt('1234', gen_salt('bf', 10)), 'DOC'),
     ('infermiere', crypt('1234', gen_salt('bf', 10)), 'INF'),
     ('amministrativo', crypt('1234', gen_salt('bf', 10)), 'AMM')
 ON CONFLICT (username) DO NOTHING;
 
--- B. Pazienti
+-- Paziente Demo
 INSERT INTO patients (nome, cognome, data_nascita, codice_fiscale, indirizzo_via, indirizzo_civico, comune, provincia) VALUES
-    ('Mario', 'Rossi', '1980-05-20', 'RSSMRA80E20H501U', 'Via Roma', '10', 'Milano', 'MI'),
-    ('Laura', 'Bianchi', '1992-11-15', 'BNCLRA92S55H501K', 'Corso Italia', '22', 'Monza', 'MB'),
-    ('Giuseppe', 'Verdi', '1955-03-10', 'VRDGPP55C10H501W', 'Piazza Duomo', '1', 'Milano', 'MI')
+    ('Mario', 'Rossi', '1980-05-20', 'RSSMRA80E20H501U', 'Via Roma', '10', 'Milano', 'MI')
 ON CONFLICT (codice_fiscale) DO NOTHING;
 
--- C. Accessi
-INSERT INTO admissions (patient_id, braccialetto, stato, patologia_codice, codice_colore, modalita_arrivo)
-SELECT id, TO_CHAR(CURRENT_DATE, 'YYYY') || '-0001', 'ATT', 'C1', 'ROSSO', 'AMBULANZA'
+-- Accesso Demo
+INSERT INTO admissions (patient_id, braccialetto, stato, patologia_code, codice_colore, modalita_arrivo_code)
+SELECT id, TO_CHAR(CURRENT_DATE, 'YYYY') || '-0001', 'ATT', 'C01', 'ROSSO', 'AMB'
 FROM patients WHERE codice_fiscale = 'RSSMRA80E20H501U'
 ON CONFLICT (braccialetto) DO NOTHING;
-
-INSERT INTO admissions (patient_id, braccialetto, stato, patologia_codice, codice_colore, modalita_arrivo)
-SELECT id, TO_CHAR(CURRENT_DATE, 'YYYY') || '-0002', 'VIS', 'C4', 'ARANCIONE', 'AUTONOMO'
-FROM patients WHERE codice_fiscale = 'BNCLRA92S55H501K'
-ON CONFLICT (braccialetto) DO NOTHING;
-
-
-SELECT * FROM sio.users;
