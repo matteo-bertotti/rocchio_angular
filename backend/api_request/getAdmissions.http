@@ -1,5 +1,5 @@
 ### GET request to example server
-GET http://localhost/api/admissions
-Authorization: Bearer {{jwt_token}}
+GET http://localhost:3000/admissions
+#Authorization: Bearer {{jwt_token}}
 
 ###
