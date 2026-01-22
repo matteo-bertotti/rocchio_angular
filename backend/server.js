@@ -65,7 +65,7 @@ app.post('/admissions', authenticateTokenFn, insertNewAdmissionFn);
 app.patch('/admissions/:id/status', authenticateTokenFn, changeAdmissionsStatusByIDFn);
 
 // --- ROTTA NON TROVATA ---
-app.all('*', (req, res, next) => {
+app.all(/(.*)/, (req, res, next) => {
   next(new AppError(`Impossibile trovare ${req.originalUrl} su questo server`, 404));
 });
 
