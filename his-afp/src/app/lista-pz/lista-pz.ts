@@ -6,9 +6,9 @@ import { HttpClient } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 
-interface Response {
+interface Response<T> {
   status: string;
-  data: HealthStatus;
+  data: T;
 }
 
 interface HealthStatus {
@@ -96,7 +96,7 @@ export class ListaPz {
   }
 
   getHealthStatus() {
-    this.#http.get<Response>('http://localhost:3000/health').subscribe((res) => {
+    this.#http.get<Response<HealthStatus>>('http://localhost:3000/health').subscribe((res) => {
       console.table(res.data);
       console.log('DB status:', res.data.database);
 
