@@ -7,9 +7,9 @@
 <p>Pazienti presenti in PS: {{ filteredList().length }}</p>
 <hr>
 
-@let srv = healthStatus()?.service;
-@let db = healthStatus()?.database;
-@let uptime = healthStatus()?.uptime;
+@let srv = healthStatus().service;
+@let db = healthStatus().database;
+@let uptime = healthStatus().uptime;
 
 <!-- TODO: Da sistemare-->
 <ul>

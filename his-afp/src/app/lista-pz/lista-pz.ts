@@ -2,12 +2,9 @@ import { Component, computed, inject, model, signal } from '@angular/core';
 import { CardPz, Paziente } from '../card-pz/card-pz';
 import { InputTextModule } from 'primeng/inputtext';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
-import { catchError, of } from 'rxjs';
 import { SystemStatus } from '../core/SystemStatus/system-status';
-import { HealthStatus } from '../core/SystemStatus/HealthStatus.model';
 
 interface Response<T> {
   status: string;
@@ -82,31 +79,8 @@ export class ListaPz {
       pz.nome.toLowerCase().includes(this.nomePaziente().toLowerCase()),
     );
   });
-  readonly #http = inject(HttpClient);
-
-  constructor() {
-    this.getHealthStatus();
-  }
 
   editNomePaziente(nomePZ: string) {
     this.nomePaziente.set(nomePZ);
-  }
-
-  getHealthStatus() {
-    this.#http
-      .get<Response<HealthStatus>>('http://localhost:3000/health')
-      .pipe(
-        catchError((error) => {
-          // TODO: Non lo abbiamo visto a lezione
-          console.error('Error fetching health status:', error.error.data);
-          return of(error.error as Response<HealthStatus>); // Return the error response as an observable to keep the stream alive
-        }),
-      )
-      .subscribe((res) => {
-        console.table(res);
-        console.log('DB status:', res.data.database);
-
-        //this.healthStatus.set(res?.data);
-      });
   }
 }
