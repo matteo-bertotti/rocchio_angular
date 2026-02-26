@@ -1,31 +1,29 @@
-import { Component, signal, model, computed, inject } from '@angular/core';
+import { Component, computed, inject, model, signal } from '@angular/core';
 import { CardPz, Paziente } from '../card-pz/card-pz';
 import { InputTextModule } from 'primeng/inputtext';
 import { FormsModule } from '@angular/forms';
+import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { SystemStatus } from '../core/systemStatus/system-status';
-import { healthStatus } from '../core/systemStatus/healthStatus.model';
-import { StatoApi } from "../ui/stato-api/stato-api";
+import { StatoApi } from '../ui/stato-api/stato-api';
 
-interface Response {
+interface Response<T> {
   status: string;
-  data: healthStatus;
-};
-
+  data: T;
+}
 
 @Component({
   selector: 'app-lista-pz',
-  imports: [CardPz, InputTextModule, FormsModule, TagModule, StatoApi],
+  imports: [InputTextModule, FormsModule, ButtonModule, CardPz, TagModule, StatoApi],
   templateUrl: './lista-pz.html',
   styleUrl: './lista-pz.scss',
 })
 export class ListaPz {
   nomePaziente = model<string>('');
-
   listaPz = signal<Paziente[]>([
     {
-      braccialetto: '1',
-      codiceColore: 'ROSSO',
+      braccialetto: 'PR234',
+      codiceColore: 'VERDE',
       cognome: 'Rocchio',
       eta: 25,
       id: '23',
@@ -34,24 +32,56 @@ export class ListaPz {
       patologia: 'C19',
     },
     {
-      braccialetto: '2',
+      braccialetto: 'BR0034',
       codiceColore: 'ARANCIONE',
-      cognome: 'Pippone',
+      cognome: 'Brazorf',
       eta: 25,
-      id: '69',
-      nome: 'Pippo',
+      id: '1',
+      nome: 'Ajeje',
       note: 'TRauma',
-      patologia: 'C69',
+      patologia: 'C19',
+    },
+    {
+      braccialetto: 'LSD',
+      codiceColore: 'ROSSO',
+      cognome: 'Winky',
+      eta: 25,
+      id: '1',
+      nome: 'Tinky',
+      note: 'TRauma',
+      patologia: 'C19',
+    },
+    {
+      braccialetto: 'LSD',
+      codiceColore: 'AZZURRO',
+      cognome: 'Winky',
+      eta: 25,
+      id: '1',
+      nome: 'Tinky',
+      note: 'TRauma',
+      patologia: 'C19',
+    },
+    {
+      braccialetto: 'LSD',
+      codiceColore: 'AZZURRO',
+      cognome: 'Winky',
+      eta: 25,
+      id: '1',
+      nome: 'Tinky',
+      note: 'TRauma',
+      patologia: 'C19',
     },
   ]);
 
-  
+  healthStatus = inject(SystemStatus).statoAPI;
 
   filteredList = computed(() => {
-    return this.listaPz().filter((pz) =>
+    return this.listaPz().filter((pz: Paziente) =>
       pz.nome.toLowerCase().includes(this.nomePaziente().toLowerCase()),
     );
   });
 
-
+  editNomePaziente(nomePZ: string) {
+    this.nomePaziente.set(nomePZ);
+  }
 }
