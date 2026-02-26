@@ -1,11 +1,11 @@
-export interface healthStatus {
+export interface HealthStatus {
   service: string;
   database: string;
   uptime: number;
-};
+}
 
-export const healthStatusMock: healthStatus = {
-    service: 'KO',
-    database: 'KO',
-    uptime: -1
+export const healthStatusMock: HealthStatus = {
+  service: 'UNAVAILABLE',
+  database: 'UNAVAILABLE',
+  uptime: -1,
 };
