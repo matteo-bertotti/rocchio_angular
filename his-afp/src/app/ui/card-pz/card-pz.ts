@@ -1,7 +1,8 @@
-import { Component, input } from '@angular/core';
+import { Component, inject, input } from '@angular/core';
 import { CardModule } from 'primeng/card';
 import { Button } from 'primeng/button';
 import { Paziente } from '../../core/Pazienti/Pazienti.model';
+import { Router } from "@angular/router";
 
 @Component({
   selector: 'his-card-pz',
@@ -10,8 +11,15 @@ import { Paziente } from '../../core/Pazienti/Pazienti.model';
   styleUrl: './card-pz.scss',
 })
 export class CardPz {
+  readonly #router = inject(Router);
   paziente = input.required<Paziente>();
   borderTop = input.required<boolean>();
+
+  public navigateToSchedaPaziente() {
+    this.#router.navigate(['/modifica-pz'],
+      {queryParams: { patientId: this.paziente().id }, 
+  });
+  }
 
   setBorder() {
     return this.borderTop() ? 'border-t-8' : 'border-b-8';
