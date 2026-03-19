@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { Button } from "primeng/button";
 import { Divider } from 'primeng/divider';
 import { DarkmodeSelector } from "../darkmode-selector/darkmode-selector.component";
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'his-header',
@@ -12,5 +13,6 @@ import { DarkmodeSelector } from "../darkmode-selector/darkmode-selector.compone
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Header {
-
+  reparto = environment.reparto;
+  struttura = environment.struttura;
 }
