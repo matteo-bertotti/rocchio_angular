@@ -1,19 +1,33 @@
 import {ChangeDetectionStrategy, Component, inject} from '@angular/core';
 import {GestioneRisorse} from '../../core/Risorse/gestione-risorse';
 import {InputText} from 'primeng/inputtext';
-import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
+import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import {JsonPipe} from '@angular/common';
 import {Button} from 'primeng/button';
+import {Message} from 'primeng/message';
+import {DatePicker} from 'primeng/datepicker';
+import {SelectModule} from 'primeng/select';
 
 @Component({
   selector: 'his-accettazione-pz',
-  imports: [InputText, ReactiveFormsModule, JsonPipe, Button],
+  imports: [InputText, ReactiveFormsModule, JsonPipe, Button, Message, DatePicker, SelectModule],
   templateUrl: './accettazione-pz.html',
   styleUrl: './accettazione-pz.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AccettazionePz {
-  //gestioneRisorse = inject(GestioneRisorse);
+  gestioneRisorse = inject(GestioneRisorse);
+  readonly maxDate = new Date();
+  readonly sexOption = [
+    {
+      code: 'M',
+      desc: 'Maschio',
+    },
+    {
+      code: 'F',
+      desc: 'Femmina',
+    },
+  ];
 
   // paziente = new FormGroup({
   //   nome: new FormControl('', [Validators.required]),
@@ -25,7 +39,11 @@ export class AccettazionePz {
         nome: ['', [Validators.required]],
         cognome: ['', [Validators.required]],
         datanascita: ['', [Validators.required]],
-        codiceFiscale: ['', [Validators.required]],
+        codiceFiscale: [
+        '',
+        [Validators.required, Validators.pattern('[A-Z]{6}\\d{2}[A-Z]\\d{2}[A-Z]\\d{3}[A-Z]')],
+        // {pattern: {requiredPattern: '^[a-zA-Z ]*$', actualValue: '1'}}
+      ],
         sesso: ['', [Validators.required]],
     }),
     sanitaria: this.#fb.group({
