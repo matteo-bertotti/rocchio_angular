@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { Button } from "primeng/button";
 import { Divider } from 'primeng/divider';
 import { environment } from '../../../environments/environment';
+import { DarkmodeSelector } from '../darkmode-selector/darkmode-selector.component';
 
 @Component({
   selector: 'his-header',

@@ -3,6 +3,8 @@ import { PatientManager } from '../../core/Pazienti/patient-manager';
 import { CardPz } from '../../ui/card-pz/card-pz';
 import { Button } from 'primeng/button';
 import { ToggleSwitch } from 'primeng/toggleswitch';
+import { FormsModule } from '@angular/forms';
+import { InputText } from 'primeng/inputtext';
 
 @Component({
   selector: 'his-tabella-pz',
