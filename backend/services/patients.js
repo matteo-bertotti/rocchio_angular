@@ -102,9 +102,11 @@ export const retrieveAdmissionByIDFn = catchAsync(async (req, res, next) => {
  */
 export const insertNewAdmissionFn = catchAsync(async (req, res) => {
 	const {
-		nome, cognome, dataNascita, codiceFiscale, // Dati Paziente
-		patologiaCode, codiceColore, modalitaArrivoCode, noteTriage // Dati Accesso (Notare i suffix 'Code')
-	} = req.body;
+		nome, cognome, dataNascita, sesso, codiceFiscale, // Dati Paziente
+	} = req.body.anagrafica;
+	const {
+		patologia, codiceColore, modArrivo, noteTriage // Dati Accesso (Notare i suffix 'Code')
+	} = req.body.sanitaria;
 
 	const client = await pool.connect();
 
@@ -112,12 +114,12 @@ export const insertNewAdmissionFn = catchAsync(async (req, res) => {
 
 	// 1. Upsert Paziente
 	let patientRes = await client.query(
-		`INSERT INTO patients (nome, cognome, data_nascita, codice_fiscale)
-         VALUES ($1, $2, $3, $4)
+		`INSERT INTO patients (nome, cognome, data_nascita, sesso, codice_fiscale)
+         VALUES ($1, $2, $3, $4, $5)
          ON CONFLICT (codice_fiscale) DO UPDATE SET nome    = EXCLUDED.nome,
                                                     cognome = EXCLUDED.cognome
          RETURNING id`,
-		[nome, cognome, dataNascita, codiceFiscale]
+		[nome, cognome, dataNascita, sesso, codiceFiscale]
 	);
 	const patientId = patientRes.rows[0].id;
 
@@ -138,7 +140,7 @@ export const insertNewAdmissionFn = catchAsync(async (req, res) => {
 	`;
 
 	const insertAdm = await client.query(insertQuery, [
-		patientId, braccialetto, patologiaCode, codiceColore, modalitaArrivoCode, noteTriage
+		patientId, braccialetto, patologia, codiceColore, modArrivo, noteTriage
 	]);
 
 	await client.query('COMMIT');
@@ -179,6 +181,46 @@ export const changeAdmissionsStatusByIDFn = catchAsync(async (req, res, next) =>
 
 	res.status(200).json({
 		status: 'success',
+		data: result.rows[0]
+	});
+});
+
+/**
+ * PATCH /patients/:id
+ * Aggiorna i dati anagrafici (indirizzo) di un paziente.
+ */
+export const updatePatientInformationFn = catchAsync(async (req, res, next) => {
+	const {id} = req.params;
+	const {
+		via,
+		civico,
+		comune,
+		provincia,
+	} = req.body;
+
+	// Validazione di base per assicurarsi che almeno un campo sia fornito
+	if (!via && !via && !comune && !provincia) {
+		return next(new AppError("Nessun dato da aggiornare fornito.", 400));
+	}
+
+	const result = await pool.query(
+		`UPDATE patients
+         SET indirizzo_via    = $1,
+             indirizzo_civico = $2,
+             comune           = $3,
+             provincia        = $4
+         WHERE id = $5
+         RETURNING id, nome, cognome, indirizzo_via, indirizzo_civico, comune, provincia`,
+		[via, civico, comune, provincia, id]
+	);
+
+	if (result.rows.length === 0) {
+		return next(new AppError("Paziente non trovato con questo ID", 404));
+	}
+
+	res.status(200).json({
+		status: 'success',
+		message: 'Dati del paziente aggiornati con successo.',
 		data: result.rows[0]
 	});
 });
