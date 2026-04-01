@@ -224,3 +224,4 @@ export const updatePatientInformationFn = catchAsync(async (req, res, next) => {
 		data: result.rows[0]
 	});
 });
+

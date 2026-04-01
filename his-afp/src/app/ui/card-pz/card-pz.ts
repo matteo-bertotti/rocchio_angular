@@ -16,7 +16,7 @@ export class CardPz {
   borderTop = input.required<boolean>();
 
   public navigateToSchedaPaziente() {
-    this.#router.navigate([`/modifica-pz/${this.paziente().id}`],);
+    this.#router.navigate([`/modifica-pz/${this.paziente().id}`]);
   }
 
   setBorder() {
